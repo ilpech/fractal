@@ -5,7 +5,8 @@
 
 #include <string>
 #include <vector>
-
+namespace FRACTAL
+{
 std::string moduleDirPath();                         //!< Возвращает путь к исполняемому модулю (в конце - '/')
 bool isPathRelative(const std::string &path);        //!< Возвращает @c true в случае относительно пути
 std::string absolutePath(const std::string &path);   //!< Возвращает абсолютный путь для относительного
@@ -16,7 +17,7 @@ std::string fileExtension(const std::string &path);  //!< Возвращает �
 bool isFileExist(const std::string &path);           //!< Возвращает true, если файл существует
 bool isDirExist(const std::string &path);            //!< Возвращает true, если директория существует
 // std::string getFileDir(const std::string &path);     //!< Возвращает путь к директории по имени файла.
-bool ensureFolder(const std::string &path);          //!< Обеспечивает существование папки по заданному пути.
+bool mkdir(const std::string &path);          //!< Обеспечивает существование папки по заданному пути.
 std::string join(const std::string &path1,           //!< Возвращает путь, соединенный из двух
 const std::string &path2);
 std::string join(const std::vector<std::string> &path_parts); //!< Возвращает путь, соединенный из частей пути, лежащих в векторе.
@@ -34,5 +35,5 @@ bool copy(const std::string &pathFrom, const std::string &pathTo);
 //! @brief отделяет extention от остального имени файла
 std::pair<std::string, std::string> splitExt(const std::string &file);
 std::string currentDateTime();
-
+}
 #endif  // FRACTTOOLS_H

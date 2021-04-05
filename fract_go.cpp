@@ -1,15 +1,18 @@
+#include <iostream>
+
 #include "tools.h"
 #include "fract.h"
 
+using namespace std;
+
 int main() 
 {
-	std::string dir("/datasets/tests/fract");
-	std::string out(join(
+	std::string dir("/Users/ilpech/datasets/tests/fract");
+	std::string out(FRACTAL::join(
 			dir,
-			currentDateTime()
-		)
-	);
-	Fract fractal(out);
+			FRACTAL::currentDateTime()
+	));
+	FRACTAL::Fract fractal(out);
 	// double min_x(0.095),
 	// 	   min_y(0.585),
 	// 	   max_x(0.155),
@@ -33,9 +36,7 @@ int main()
 		h_out(900);
 	// int max_iter(100);
 	// int max_iter(500);
-	int max_iter(1000);
-	std::string hist("/data/datasets/tests/fract/2021-03-07.Mar.031615132291.1615132291/mandelbrot.fhistory");
-	fractal.readHistFromFile(hist);
+	int max_iter(600);
 	const bool show=true;
 	const bool write=true;
 	fractal.mandelbrot(

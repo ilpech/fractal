@@ -10,58 +10,29 @@
 #include "tools.h"
 
 using namespace std;
+using namespace FRACTAL;
 
 string printRc(const cv::Rect& rc)
 {
 	return cv::format("(%d,%d) %dx%d", rc.x, rc.y, rc.width, rc.height);
 }
 
-Fract::Fract(
+FRACTAL::Fract::Fract(
 	const std::string& outDir_
 )
 : outDir(outDir_)
 {
 	if(!isDirExist(this->outDir))
 	{
-		if(ensureFolder(this->outDir))
+		if(mkdir(this->outDir))
 			cout << "Fract::created out dir::" << this->outDir << endl;
 		else
 			throw std::runtime_error("Fract::failed creating out dir::" + this->outDir);
 	}
 }
 
-template <typename T>
-void Fract::window<T>::zoom(
-  const double window_ratio, 
-  const double x0, 
-  const double x1,
-  const double y0, 
-  const double y1) 
-{
-	double y = (x1 - x0) * window_ratio;
-	this->reset(x0, x1, y0, y + y0);
-	if(this->zoom_history.empty())
-	{
-		zoom_history.emplace_back(0,x0,x1,y0,y1);
-		return;
-	}
-	auto last_z = zoom_history.back();
-	zoom_history.emplace_back(last_z.frame_number,x0,x1,y0,y1);
-}
 
-Fract::Complex Fract::scale(
-	Fract::window<int> &scr, 
-	Fract::window<double> &fr, 
-	Fract::Complex c
-) 
-{
-	Fract::Complex aux(c.real() / (double)scr.width() * fr.width() + fr.x_min(),
-		c.imag() / (double)scr.height() * fr.height() + fr.y_min());
-	return aux;
-}
-
-
-int Fract::escape(
+int FRACTAL::Fract::escape(
 	Fract::Complex c, 
 	int iter_max, 
 	const std::function<Fract::Complex( 
@@ -83,8 +54,8 @@ int Fract::escape(
 
 
 void Fract::getNumberIterations(
-	Fract::window<int> &scr, 
-	Fract::window<double> &fract, 
+	CS<int> &scr, 
+	CS<double> &fract, 
 	int iter_max, 
 	std::vector<int> &colors,
 	const std::function<Fract::Complex( 
@@ -98,7 +69,7 @@ void Fract::getNumberIterations(
 	for(int i = scr.y_min(); i < scr.y_max(); ++i) {
 		for(int j = scr.x_min(); j < scr.x_max(); ++j) {
 			Complex c((double)j, (double)i);
-			c = scale(scr, fract, c);
+			c = CSHelper::scale(scr, fract, c);
 			colors[k] = escape(c, iter_max, func, th);
 			k++;
 		}
@@ -111,8 +82,8 @@ void Fract::getNumberIterations(
 }
 
 cv::Mat Fract::computeFractal(
-  Fract::window<int> &scr, 
-  Fract::window<double> &fract, 
+  CS<int> &scr, 
+  CS<double> &fract, 
   int iter_max, 
   std::vector<int> &colors,
   const std::function<Complex( Complex, Complex)> &func, 
@@ -122,6 +93,7 @@ cv::Mat Fract::computeFractal(
   const bool write
 ) 
 {
+	cout << "computeFractal..." << endl;
 	auto start = std::chrono::steady_clock::now();
 	getNumberIterations(scr, fract, iter_max, colors, func);
 	auto end = std::chrono::steady_clock::now();
@@ -132,7 +104,7 @@ cv::Mat Fract::computeFractal(
 	return Fract::plot(scr, colors, iter_max, fname, smooth_color, show, write);
 }
 
-Fract::window<double> Fract::mandelbrot(
+CS<double> Fract::mandelbrot(
 	const cv::Point2d& x1y1,
 	const cv::Point2d& x2y2,
 	const int max_iter,
@@ -142,10 +114,11 @@ Fract::window<double> Fract::mandelbrot(
 	const bool write
 )
 {
-	Fract::window<int> scr(0, outimg_w, 0, outimg_h);
-	Fract::window<double> fract(x1y1.x, x2y2.x, x1y1.y, x2y2.y);
+	CS<int> scr(0, outimg_w, 0, outimg_h);
+	CS<double> fract(x1y1.x, x2y2.x, x1y1.y, x2y2.y);
 	//! @attention the function used to calculate the fractal
-	auto func = [] (Complex z, Complex c) -> Complex {return Complex(cos(45),cos(30))* z * z  + c; };
+	// auto func = [] (Complex z, Complex c) -> Complex {return Complex(cos(45),cos(30))* z * z  + c; };
+	auto func = [] (Complex z, Complex c) -> Complex {return z * z  + c; };
 	string fname_pr = "mandelbrot.%03d.png";
 	string histname_pr = "mandelbrot.fhistory";
 	cv::Mat lastOut;
@@ -178,19 +151,20 @@ Fract::window<double> Fract::mandelbrot(
 			   newx2(fract.x_max()),
 			   newy1(fract.y_min()),
 			   newy2(fract.y_max());
+
 		if(targetBbox.area()>0)
 		{
-			double diff_x1_img_coords = targetBbox.x;
-			double diff_x2_img_coords = targetBbox.x + targetBbox.width;
-			double diff_y1_img_coords = targetBbox.y;
-			double diff_y2_img_coords = targetBbox.y + targetBbox.height;
-			double ratio_def_scr_w = fract.width() / scr.width(); 
-			double ratio_def_scr_h = fract.height() / scr.height(); 
-			newx1 = curx1+diff_x1_img_coords*ratio_def_scr_w;
-			newx2 = curx1+diff_x2_img_coords*ratio_def_scr_w;
-			newy1 = cury1+diff_y1_img_coords*ratio_def_scr_h;
-			newy2 = cury1+diff_y2_img_coords*ratio_def_scr_h;
+			auto new_pt1 = CSHelper::scale<int, double>(scr, fract, {targetBbox.x, targetBbox.y});
+			auto new_pt2 = CSHelper::scale<int, double>(scr, fract, {
+				targetBbox.x + targetBbox.width, 
+				targetBbox.y + targetBbox.height
+			});
+			newx1 = new_pt1.first;
+			newx2 = new_pt2.first;
+			newy1 = new_pt1.second;
+			newy2 = new_pt2.second;
 		}
+
 		fract.zoom(
 			1.0, 
 			newx1, 
@@ -206,9 +180,19 @@ Fract::window<double> Fract::mandelbrot(
 			f << fz.info2file() << '\n';
 		}
 		cout << "written to " << hist_path << endl;
+		auto midFract = fract.middle();
 		f.close();
+		cout << fract.info() << endl;
+			cout << "ti che" << endl;
 		lastOut = computeFractal(scr, fract, max_iter, colors, func, f_path.c_str(), smooth_color, show, write);
+		if(!lastOut.empty())
+			cout << "done" << endl;
 	}
+}
+
+cv::Mat vizOut(const cv::Mat& computed_fract)
+{
+	
 }
 
 std::tuple<int, int, int> get_rgb_piecewise_linear(int n, int iter_max) {
@@ -243,7 +227,7 @@ std::tuple<int, int, int> get_rgb_smooth(int n, int iter_max) {
 
 
 cv::Mat Fract::plot(
-	Fract::window<int> &scr, 
+	CS<int> &scr, 
 	std::vector<int> &colors, 
 	int iter_max, 
 	const char *fname, 
@@ -266,9 +250,9 @@ cv::Mat Fract::plot(
 			}
 			// or revert indxs?
 			cv::Scalar col_bgr {
-				std::get<0>(rgb),
-				std::get<1>(rgb),
-				std::get<2>(rgb),
+				static_cast<double>(std::get<0>(rgb)),
+				static_cast<double>(std::get<1>(rgb)),
+				static_cast<double>(std::get<2>(rgb)),
 			};
 
 			cv::circle(
@@ -294,7 +278,7 @@ cv::Mat Fract::plot(
 	return bitmap;
 }
 
-std::vector<Fract::ZoomFrameHist> Fract::readHistFromFile(const std::string& file_path)
+std::vector<ZoomFrameHist> Fract::readHistFromFile(const std::string& file_path)
 {
 	std::vector<ZoomFrameHist> out;
 	ifstream f(file_path);
@@ -311,4 +295,64 @@ std::vector<Fract::ZoomFrameHist> Fract::readHistFromFile(const std::string& fil
 	}
 	f.close();
 	return out;
+}
+// CS
+template <typename T>
+void FRACTAL::CS<T>::zoom(
+const double window_ratio, 
+const double x0, 
+const double x1,
+const double y0, 
+const double y1) 
+{
+	double y = (x1 - x0) * window_ratio;
+	this->reset(x0, x1, y0, y + y0);
+	if(this->zoom_history.empty())
+	{
+		zoom_history.emplace_back(0,x0,x1,y0,y1);
+		return;
+	}
+	auto last_z = zoom_history.back();
+	zoom_history.emplace_back(last_z.frame_number+1,x0,x1,y0,y1);
+}
+
+template <typename T>
+std::string FRACTAL::CS<T>::info() const
+{
+	auto mid = this->middle();
+	std::string info = cv::format(
+		"CS info::\nCSMid::(%.8f,%.8f)\nwh::(%.8f, %.8f)",
+		mid.first,
+		mid.second,
+		this->width(),
+		this->height()
+	);
+	return info;
+}
+
+
+std::complex<double>  FRACTAL::CSHelper::scale(
+	CS<int> &scr, 
+	CS<double> &fr, 
+	std::complex<double> c
+) 
+{
+	std::complex<double> aux(
+	c.real() / (double)scr.width() * fr.width() + fr.x_min(),
+	c.imag() / (double)scr.height() * fr.height() + fr.y_min()
+);
+return aux;
+}
+
+template <typename FROM, typename TO>
+std::pair<TO, TO> FRACTAL::CSHelper::scale(
+	CS<FROM> &scr, 
+	CS<TO> &fr, 
+	std::pair<FROM, FROM> c
+) 
+{
+	return std::make_pair<TO, TO>(
+	c.first / (TO)scr.width() * fr.width() + fr.x_min(),
+	c.second / (TO)scr.height() * fr.height() + fr.y_min()
+	);
 }

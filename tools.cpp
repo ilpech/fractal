@@ -26,17 +26,17 @@
 #include <unistd.h>
 #endif
 
-std::string currentDateTime() 
+std::string FRACTAL::currentDateTime() 
 {
 	time_t     now = time(0);
 	struct tm  tstruct;
 	char       buf[80];
 	tstruct = *localtime(&now);
-	strftime(buf, sizeof(buf), "%Y-%m-%d.%h.%m%s.%s", &tstruct);
+	strftime(buf, sizeof(buf), "%H.%M.%S..%Y.%m.%d", &tstruct);
 	return buf;
 }
 
-std::string moduleDirPath()
+std::string FRACTAL::moduleDirPath()
 {
   char libraryPathBuf[256] = {0};
 
@@ -63,24 +63,24 @@ std::string moduleDirPath()
   return canonizePath(libraryPath);
 }
 
-bool isPathRelative(const std::string &path)
+bool FRACTAL::isPathRelative(const std::string &path)
 {
 #ifdef _MSC_VER
   bool withoutDriveLetter = path.empty() || ( path.size() > 0 && path[0] != '/' && path[0] != '\\');
   char driveBuf[256] = {0};
   _splitpath(path.c_str(), driveBuf, 0, 0, 0);
   return strlen(driveBuf) <= 0 && withoutDriveLetter;
-#elif __linux__
+#else
   return path.empty() || ( path.size() > 0 && path[0] != '/' );
 #endif
 }
 
-std::string absolutePath(const std::string &path)
+std::string FRACTAL::absolutePath(const std::string &path)
 {
   return canonizePath(isPathRelative(path) ? join(moduleDirPath(), path) : path);
 }
 
-std::string canonizePath(const std::string &path)
+std::string FRACTAL::canonizePath(const std::string &path)
 {
   std::string canonizedPath = path;
   for (size_t i = 0; i < canonizedPath.length(); i++)
@@ -102,13 +102,13 @@ std::string canonizePath(const std::string &path)
 //   return fileName(pos == std::string::npos ? path : path.substr(0, pos));
 // }
 
-std::string fileExtension(const std::string &path)
+std::string FRACTAL::fileExtension(const std::string &path)
 {
   size_t pos = canonizePath(path).rfind(".");
   return (pos == std::string::npos) ? std::string() : path.substr(pos + 1);
 }
 
-bool isFileExist(const std::string &path)
+bool FRACTAL::isFileExist(const std::string &path)
 {
   int res(-1);
 #ifdef _WINDOWS
@@ -126,7 +126,7 @@ bool isFileExist(const std::string &path)
   return (0 == res) && S_ISREG(info.st_mode);
 }
 
-bool isDirExist(const std::string &path)
+bool FRACTAL::isDirExist(const std::string &path)
 {
   int res(-1);
 #ifdef _WINDOWS
@@ -161,7 +161,7 @@ bool isDirExist(const std::string &path)
 // }
 
 
-bool ensureFolder(const std::string &path)
+bool FRACTAL::mkdir(const std::string &path)
 {
   if (0 < path.size())
   {
@@ -178,7 +178,7 @@ bool ensureFolder(const std::string &path)
         return true;
       }
     }
-#elif __linux__
+#else
     struct stat st = {0};
     if (!isDirExist(path))
       int res = system(("mkdir -p " + path).c_str());
@@ -186,17 +186,16 @@ bool ensureFolder(const std::string &path)
     if (stat(path.c_str(), &st) == 0)
       return true;
 #endif
-    std::cerr << "ensureFolder can't create directory " << path << std::endl;
   }
   else
   {
-    std::cerr << "ensureFolder: empty path " << std::endl;
+    std::cerr << "mkdir: empty path " << std::endl;
   }
 
   return false;
 }
 
-std::string join(const std::string &path1, const std::string &path2)
+std::string FRACTAL::join(const std::string &path1, const std::string &path2)
 {
   if (!isPathRelative(path2))
     return canonizePath(path2);
@@ -206,7 +205,7 @@ std::string join(const std::string &path1, const std::string &path2)
   return canonizedPath1 + canonizePath(path2);
 }
 
-std::string join(const std::vector<std::string> &path_parts)
+std::string FRACTAL::join(const std::vector<std::string> &path_parts)
 {
   if (path_parts.size() == 0)
     return std::string();
@@ -220,7 +219,7 @@ std::string join(const std::vector<std::string> &path_parts)
   return result;
 }
 
-std::vector<std::string> split(const std::string &path)
+std::vector<std::string> FRACTAL::split(const std::string &path)
 {
   std::string canonizedPath = canonizePath(path);
   std::vector<size_t> forwardSlashIndices;
@@ -260,7 +259,7 @@ std::vector<std::string> split(const std::string &path)
   return result;
 }
 
-std::pair<std::string, std::string> splitLast(const std::string &path)
+std::pair<std::string, std::string> FRACTAL::splitLast(const std::string &path)
 {
   auto parts = split(path);
   if (parts.size() == 0)
@@ -273,12 +272,12 @@ std::pair<std::string, std::string> splitLast(const std::string &path)
 
 
 
-std::vector<std::string> ls(const std::string &path)
+std::vector<std::string> FRACTAL::ls(const std::string &path)
 {
   // return stlplus::folder_all(path);
 }
 
-std::vector<std::string> ls_wc(const std::string &folder, const std::string &wildcard, bool subfolders,
+std::vector<std::string> FRACTAL::ls_wc(const std::string &folder, const std::string &wildcard, bool subfolders,
   bool files)
 {
   // return stlplus::folder_wildcard(folder, wildcard, subfolders, files);
@@ -286,7 +285,7 @@ std::vector<std::string> ls_wc(const std::string &folder, const std::string &wil
 
 
 
-bool remove(const std::string &path)
+bool FRACTAL::remove(const std::string &path)
 {
   bool res(false);
   // if (0 < path.size())
@@ -312,7 +311,7 @@ bool remove(const std::string &path)
   return res;
 }
 
-bool rename(const std::string &pathFrom, const std::string &pathTo)
+bool FRACTAL::rename(const std::string &pathFrom, const std::string &pathTo)
 {
   bool res(false);
   // if ((0 < pathFrom.size()) && (0 < pathTo.size()))
@@ -339,7 +338,7 @@ bool rename(const std::string &pathFrom, const std::string &pathTo)
   return res;
 }
   
-bool copy(const std::string &pathFrom, const std::string &pathTo)                
+bool FRACTAL::copy(const std::string &pathFrom, const std::string &pathTo)                
 {
   bool res(false);
   // if ((0 < pathFrom.size()) && (0 < pathTo.size()))
@@ -367,7 +366,7 @@ bool copy(const std::string &pathFrom, const std::string &pathTo)
   return res;
 }
 
-std::pair<std::string, std::string> splitExt(const std::string &file)
+std::pair<std::string, std::string> FRACTAL::splitExt(const std::string &file)
 {
   auto pos = file.find_last_of('.');
   if (pos != std::string::npos)
