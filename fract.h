@@ -164,9 +164,9 @@ struct Viewer
         ARROW_UP = 65362,
         ARROW_LEFT = 65361,
         ARROW_RIGHT = 65363,
-        ARROW_DOWN = 65364
+        ARROW_DOWN = 65364,
         ZUM_IN = 122, //z
-        ZUM_OUT = 120, //x
+        ZUM_OUT = 120 //x
 #else
         NO_KEY = -1,
         ARROW_UP = 0,
@@ -174,7 +174,7 @@ struct Viewer
         ARROW_RIGHT = 3,
         ARROW_DOWN = 1,
         ZUM_IN = 122, //z
-        ZUM_OUT = 120, //x
+        ZUM_OUT = 120 //x
 #endif
     };
     static bool waitKey2Control(
