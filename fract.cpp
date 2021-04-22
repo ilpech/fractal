@@ -130,19 +130,8 @@ CS<double> Fract::mandelbrot(
 		bool smooth_color = true;
 		std::vector<int> colors(scr.size());
 		cv::Rect targetBbox;
-		if(show && ! lastOut.empty())
-		{
-			bool showCrosshair = true;
-			bool fromCenter = false;
-			string sel_window = "FRACT::SelectRoi()";
-			cout << sel_window << endl;
-			targetBbox = cv::selectROI(sel_window, lastOut, showCrosshair, fromCenter);
-			if(targetBbox.width > targetBbox.height)
-				targetBbox.height = targetBbox.width;
-			else
-				targetBbox.width = targetBbox.height;
-			cv::destroyWindow(sel_window);
-		}
+		bool zoomDone(false);
+		cout << "zoom until press Esc..." << endl;
 		double curx1(fract.x_min()),
 			   curx2(fract.x_max()),
 			   cury1(fract.y_min()),
@@ -151,6 +140,48 @@ CS<double> Fract::mandelbrot(
 			   newx2(fract.x_max()),
 			   newy1(fract.y_min()),
 			   newy2(fract.y_max());
+		auto viewer = Viewer(lastOut);
+		if(show && ! lastOut.empty())
+		{
+			while(!zoomDone)
+			{
+				string window_name = "FRACT";
+				auto viewer2draw = viewer.drawWithCursor();
+				cv::imshow(window_name, viewer2draw);
+				auto pressedKey = cv::waitKey(0);
+				std::vector<Viewer::KeyboardKeys> commands;
+				if(!Viewer::waitKey2Control(pressedKey, commands))
+					zoomDone = true;
+				// cout << "pressed::" << pressedKey << endl;
+				viewer.moveByKey({static_cast<FRACTAL::Viewer::KeyboardKeys>(pressedKey)});
+				viewer.moveTox1x2y1y2<double>(
+					newx1,
+					newx2,
+					newy1,
+					newy2
+				);
+				auto new_pt1 = CSHelper::scale<int, double>(scr, fract, {newx1, newy1});
+				auto new_pt2 = CSHelper::scale<int, double>(scr, fract, {newx2, newy2});
+				newx1 = new_pt1.first;
+				newx2 = new_pt2.first;
+				newy1 = new_pt1.second;
+				newy2 = new_pt2.second;
+				cout << "x1: " << newx1 << endl
+					 << "y1: " << newy1 << endl
+					 << "x2: " << newx2 << endl
+					 << "y2: " << newy2 << endl;
+				// bool showCrosshair = true;
+				// bool fromCenter = false;
+				// string sel_window = "FRACT::SelectRoi()";
+				// cout << sel_window << endl;
+				// targetBbox = cv::selectROI(sel_window, lastOut, showCrosshair, fromCenter);
+				// if(targetBbox.width > targetBbox.height)
+				// 	targetBbox.height = targetBbox.width;
+				// else
+				// 	targetBbox.width = targetBbox.height;
+				// cv::destroyWindow(sel_window);
+			}
+		}
 
 		if(targetBbox.area()>0)
 		{
@@ -188,6 +219,7 @@ CS<double> Fract::mandelbrot(
 		if(!lastOut.empty())
 			cout << "done" << endl;
 	}
+	return fract;
 }
 
 cv::Mat vizOut(const cv::Mat& computed_fract)
@@ -209,19 +241,13 @@ std::tuple<int, int, int> get_rgb_piecewise_linear(int n, int iter_max) {
 	return std::tuple<int, int, int>(r, g, b);
 }
 
-std::tuple<int, int, int> get_rgb_smooth(int n, int iter_max) {
+std::tuple<int, int, int> iters2rgbBernstein(int n, int iter_max) 
+{
 	// map n on the 0..1 interval
 	double t = (double)n/(double)iter_max;
-	// Use smooth polynomials for r, g, b
-	// int b = (int)(4*(1-t)*255);
-	// int r = (int)(15*(1-t)*(1-t)*t*t*255);
-	// int g =  (int)(8.5*(1-t)*(1-t)*t*255);	
-
 	int r = (int)(4*(1-t*t)*t*255);
 	int g = (int)(15*(1-t)*(1-t)*t*t*255);
-	// // int g = (int)(7*(1-t*t)*t*t*255);
 	int b =  (int)(8.5*(1-t)*(1-t)*(1-t)*t*255);	
-	// // int b =  (int)(8.5*(1-t)*(1-t)*t*255);	
 	return std::tuple<int, int, int>(r, g, b);
 }
 
@@ -234,7 +260,8 @@ cv::Mat Fract::plot(
 	bool smooth_color,
 	const bool show,
 	const bool write
-) {
+) 
+{
 	unsigned int width = scr.width(), height = scr.height();
 	cv::Mat bitmap(width, height, CV_8UC3);
 	int k = 0;
@@ -246,13 +273,13 @@ cv::Mat Fract::plot(
 				rgb = get_rgb_piecewise_linear(n, iter_max);
 			}
 			else {
-				rgb = get_rgb_smooth(n, iter_max);
+				rgb = iters2rgbBernstein(n, iter_max);
 			}
 			// or revert indxs?
 			cv::Scalar col_bgr {
-				static_cast<double>(std::get<0>(rgb)),
-				static_cast<double>(std::get<1>(rgb)),
 				static_cast<double>(std::get<2>(rgb)),
+				static_cast<double>(std::get<1>(rgb)),
+				static_cast<double>(std::get<0>(rgb)),
 			};
 
 			cv::circle(
@@ -296,14 +323,16 @@ std::vector<ZoomFrameHist> Fract::readHistFromFile(const std::string& file_path)
 	f.close();
 	return out;
 }
+
 // CS
 template <typename T>
 void FRACTAL::CS<T>::zoom(
-const double window_ratio, 
-const double x0, 
-const double x1,
-const double y0, 
-const double y1) 
+	const double window_ratio, 
+	const double x0, 
+	const double x1,
+	const double y0, 
+	const double y1
+) 
 {
 	double y = (x1 - x0) * window_ratio;
 	this->reset(x0, x1, y0, y + y0);
@@ -338,10 +367,10 @@ std::complex<double>  FRACTAL::CSHelper::scale(
 ) 
 {
 	std::complex<double> aux(
-	c.real() / (double)scr.width() * fr.width() + fr.x_min(),
-	c.imag() / (double)scr.height() * fr.height() + fr.y_min()
-);
-return aux;
+		c.real() / (double)scr.width() * fr.width() + fr.x_min(),
+		c.imag() / (double)scr.height() * fr.height() + fr.y_min()
+	);
+	return aux;
 }
 
 template <typename FROM, typename TO>
@@ -352,7 +381,147 @@ std::pair<TO, TO> FRACTAL::CSHelper::scale(
 ) 
 {
 	return std::make_pair<TO, TO>(
-	c.first / (TO)scr.width() * fr.width() + fr.x_min(),
-	c.second / (TO)scr.height() * fr.height() + fr.y_min()
+		c.first / (TO)scr.width() * fr.width() + fr.x_min(),
+		c.second / (TO)scr.height() * fr.height() + fr.y_min()
 	);
+}
+
+bool FRACTAL::Viewer::waitKey2Control(
+        const int k,
+        std::vector<FRACTAL::Viewer::KeyboardKeys>& commands
+)
+{
+	if(k == Viewer::KeyboardKeys::ARROW_UP) // arrow up 
+	{
+		commands.push_back(Viewer::KeyboardKeys::ARROW_UP);
+	}
+	else if(k == Viewer::KeyboardKeys::ARROW_LEFT) // arrow left 
+	{
+		commands.push_back(Viewer::KeyboardKeys::ARROW_LEFT);
+	}
+	else if(k == Viewer::KeyboardKeys::ARROW_RIGHT) // arrow right 
+	{
+		commands.push_back(Viewer::KeyboardKeys::ARROW_RIGHT);
+	}
+	else if(k == Viewer::KeyboardKeys::ARROW_DOWN) // arrow right 
+	{
+		commands.push_back(Viewer::KeyboardKeys::ARROW_DOWN);
+	}
+	else if(k == 122) // z
+	{
+
+	}
+	else if(k == 120) // x
+	{
+	}
+	else if(k == 27) // Esc
+	{
+		std::cout << "Esc pressed..." << std::endl;
+		return false;
+	}
+	return true;
+}
+
+cv::Mat FRACTAL::Viewer::drawWithCursor() const
+{
+	auto img2draw = this->src2view.clone();
+	auto half_line_width = int(src2view.size().width/this->xMod);
+	auto half_line_height = int(src2view.size().width/this->xMod);
+	try{
+		cv::line(
+			img2draw,
+			{
+				this->xCurrent-half_line_width,
+				this->yCurrent-half_line_height
+			},
+			{
+				this->xCurrent+half_line_width,
+				this->yCurrent+half_line_height
+			},
+			{
+				0,255,0
+			},
+			2
+		);
+		cv::line(
+			img2draw,
+			{
+				this->xCurrent+half_line_width,
+				this->yCurrent-half_line_height
+			},
+			{
+				this->xCurrent-half_line_width,
+				this->yCurrent+half_line_height
+			},
+			{
+				255,0,255
+			},
+			2
+		);
+	}
+	catch(...)
+	{}
+	return img2draw;
+}
+
+void FRACTAL::Viewer::moveByKey(const std::vector<Viewer::KeyboardKeys>& keys)
+{
+	if(keys.empty())
+		return;
+	if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ARROW_UP) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ARROW_UP" << endl;
+		this->yCurrent -= this->yStep;
+		if(this->yCurrent < 0)
+			this->yCurrent = 0;
+	}
+	else if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ARROW_DOWN) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ARROW_DOWN" << endl;
+		this->yCurrent += this->yStep;
+		if(this->yCurrent > this->src2view.size().height)
+			this->yCurrent = this->src2view.size().height;
+	}
+	else if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ARROW_LEFT) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ARROW_LEFT" << endl;
+		this->xCurrent -= this->xStep;
+		if(this->xCurrent < 0)
+			this->xCurrent = 0;
+	}
+	else if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ARROW_RIGHT) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ARROW_RIGHT" << endl;
+		this->xCurrent += this->xStep;
+		if(this->xCurrent > this->src2view.size().width)
+			this->xCurrent = this->src2view.size().width;
+	}
+	else if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ZUM_IN) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ZUM_IN" << endl;
+		this->xMod += 1;
+		this->yMod += 1;
+	}
+	else if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ZUM_OUT) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ZUM_OUT" << endl;
+		this->xMod -= 1;
+		this->yMod -= 1;
+	}
+}
+
+template <typename T>
+void FRACTAL::Viewer::moveTox1x2y1y2(
+        T &x1,
+        T &x2,
+        T &y1,
+        T &y2
+)
+{
+	auto half_line_width = int(src2view.size().width/this->xMod);
+	auto half_line_height = int(src2view.size().width/this->xMod);
+	x1 = T(this->xCurrent-half_line_width);
+	x2 = T(this->xCurrent+half_line_width);
+	y1 = T(this->yCurrent-half_line_height);
+	y2 = T(this->yCurrent+half_line_height);
 }

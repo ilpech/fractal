@@ -1,9 +1,15 @@
 #include <iostream>
 
+#include <opencv2/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
 #include "tools.h"
 #include "fract.h"
 
 using namespace std;
+
+
 
 int main() 
 {
@@ -13,16 +19,6 @@ int main()
 			FRACTAL::currentDateTime()
 	));
 	FRACTAL::Fract fractal(out);
-	// double min_x(0.095),
-	// 	   min_y(0.585),
-	// 	   max_x(0.155),
-	// 	   max_y(0.645);
-
-// fract.x_min()::0.100002
-// fract.y_min()::0.614558
-// fract.x_max()::0.100968
-// fract.y_max()::0.615524
-
 	double 
 		   x1(-2.2),
 		   x2(1.2),
@@ -36,7 +32,7 @@ int main()
 		h_out(900);
 	// int max_iter(100);
 	// int max_iter(500);
-	int max_iter(600);
+	int max_iter(150);
 	const bool show=true;
 	const bool write=true;
 	fractal.mandelbrot(

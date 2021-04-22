@@ -140,6 +140,58 @@ public:
     std::string info() const;
 };
 
+struct Viewer
+{
+    cv::Mat src2view;
+    int xCurrent;
+    int yCurrent;
+    int xStep;
+    int yStep;
+    int xMod = 10;
+    int yMod = 10;
+    Viewer(const cv::Mat& src2view_)
+    : src2view(src2view_)
+    {
+        this->xCurrent = int(src2view.size().width/2);
+        this->yCurrent = int(src2view.size().height/2);
+        this->xStep = int(src2view.size().width/100);
+        this->yStep = int(src2view.size().height/100);
+    }
+    enum KeyboardKeys
+    {
+#ifdef __linux__
+        NO_KEY = -1,
+        ARROW_UP = 65362,
+        ARROW_LEFT = 65361,
+        ARROW_RIGHT = 65363,
+        ARROW_DOWN = 65364
+        ZUM_IN = 122, //z
+        ZUM_OUT = 120, //x
+#else
+        NO_KEY = -1,
+        ARROW_UP = 0,
+        ARROW_LEFT = 2,
+        ARROW_RIGHT = 3,
+        ARROW_DOWN = 1,
+        ZUM_IN = 122, //z
+        ZUM_OUT = 120, //x
+#endif
+    };
+    static bool waitKey2Control(
+        const int k,
+        std::vector<Viewer::KeyboardKeys>& commands
+    );
+    cv::Mat drawWithCursor() const;
+    void moveByKey(const std::vector<Viewer::KeyboardKeys>& keys);
+    template <typename T>
+    void moveTox1x2y1y2(
+        T &x1,
+        T &x2,
+        T &y1,
+        T &y2
+    );
+};
+
 struct CSHelper
 {
     //! @brief convert a pixel coordinate to the complex domain
