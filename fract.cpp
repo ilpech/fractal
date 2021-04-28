@@ -65,20 +65,32 @@ void Fract::getNumberIterations(
 {
 	cout << "process " << iter_max << " iters" << endl;
 	int k = 0, progress = -1;
-	const double th = 2.0;
-	for(int i = scr.y_min(); i < scr.y_max(); ++i) {
-		for(int j = scr.x_min(); j < scr.x_max(); ++j) {
-			Complex c((double)j, (double)i);
+	cv::Mat iterMat(scr.width(), scr.height(), CV_8SC1);
+	iterMat.forEach<uchar>
+	(
+		[&scr, &fract, &colors, &func, &iter_max](uchar &pixel, const int * position) -> void
+		{
+			const double th = 2.0;
+			auto y = position[0];
+			auto x = position[1];
+			Complex c((double)x, (double)y);
 			c = CSHelper::scale(scr, fract, c);
-			colors[k] = escape(c, iter_max, func, th);
-			k++;
+			colors[y*scr.width() + x] = escape(c, iter_max, func, th);
 		}
-		if(progress < (int)(i*100.0/scr.y_max())){
-			progress = (int)(i*100.0/scr.y_max());
-			// std::cout << progress << '%' << std::flush;
-			// std::cout.flush();
-		}
-	}
+	);
+	// for(int i = scr.y_min(); i < scr.y_max(); ++i) {
+	// 	for(int j = scr.x_min(); j < scr.x_max(); ++j) {
+	// 		Complex c((double)j, (double)i);
+	// 		c = CSHelper::scale(scr, fract, c);
+	// 		colors[k] = escape(c, iter_max, func, th);
+	// 		k++;
+	// 	}
+	// 	if(progress < (int)(i*100.0/scr.y_max())){
+	// 		progress = (int)(i*100.0/scr.y_max());
+	// 		// std::cout << progress << '%' << std::flush;
+	// 		// std::cout.flush();
+	// 	}
+	// }
 }
 
 cv::Mat Fract::computeFractal(
