@@ -255,6 +255,14 @@ struct Fract
         const bool write=true
     );
 
+    static std::tuple<int, int, int> iters2rgbBernstein(
+        const int n, 
+        const int iter_max,
+        std::tuple<double, double, double> rgb_c,
+        std::tuple<double, double, double> rgb_t,
+        std::tuple<double, double, double> rgb_1_t
+    );
+
     cv::Mat vizOut(const cv::Mat& computed_fract);
 
     CS<double> mandelbrot(

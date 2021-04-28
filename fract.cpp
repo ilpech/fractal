@@ -253,13 +253,33 @@ std::tuple<int, int, int> get_rgb_piecewise_linear(int n, int iter_max) {
 	return std::tuple<int, int, int>(r, g, b);
 }
 
-std::tuple<int, int, int> iters2rgbBernstein(int n, int iter_max) 
+std::tuple<int, int, int> iters2rgbBernsteinPoly(
+	const int n, 
+	const int iter_max
+) 
 {
 	// map n on the 0..1 interval
 	double t = (double)n/(double)iter_max;
-	int r = (int)(4*(1-t*t)*t*255);
+	int r = (int)(4*(1-t)*t*255);
 	int g = (int)(15*(1-t)*(1-t)*t*t*255);
 	int b =  (int)(8.5*(1-t)*(1-t)*(1-t)*t*255);	
+	return std::tuple<int, int, int>(r, g, b);
+	
+}
+
+std::tuple<int, int, int> Fract::iters2rgbBernstein(
+	const int n, 
+	const int iter_max,
+	std::tuple<double, double, double> rgb_c,
+	std::tuple<double, double, double> rgb_t,
+	std::tuple<double, double, double> rgb_1_t
+) 
+{
+	// map n on the 0..1 interval
+	double t = (double)n/(double)iter_max;
+	int r = (int)(std::get<0>(rgb_c)*pow((t),std::get<0>(rgb_t))*pow(t,std::get<0>(rgb_1_t))*255);
+	int g = (int)(std::get<1>(rgb_c)*pow((t),std::get<1>(rgb_t))*pow(t,std::get<1>(rgb_1_t))*255);
+	int b = (int)(std::get<2>(rgb_c)*pow((t),std::get<2>(rgb_t))*pow(t,std::get<2>(rgb_1_t))*255);
 	return std::tuple<int, int, int>(r, g, b);
 }
 
@@ -285,7 +305,7 @@ cv::Mat Fract::plot(
 				rgb = get_rgb_piecewise_linear(n, iter_max);
 			}
 			else {
-				rgb = iters2rgbBernstein(n, iter_max);
+				rgb = iters2rgbBernsteinPoly(n, iter_max);
 			}
 			// or revert indxs?
 			cv::Scalar col_bgr {

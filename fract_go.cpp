@@ -13,8 +13,12 @@ using namespace std;
 
 int main() 
 {
-	//std::string dir("/Users/ilpech/datasets/tests/fract");
-	std::string dir("/datasets/tests/fract");
+	std::string dir;
+#ifdef __linux__
+	dir = "/datasets/tests/fract";
+#else
+	dir = "/Users/ilpech/datasets/tests/fract";
+#endif
 	std::string out(FRACTAL::join(
 			dir,
 			FRACTAL::currentDateTime()
