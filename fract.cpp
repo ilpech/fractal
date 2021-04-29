@@ -78,19 +78,6 @@ void Fract::getNumberIterations(
 			colors[y*scr.width() + x] = escape(c, iter_max, func, th);
 		}
 	);
-	// for(int i = scr.y_min(); i < scr.y_max(); ++i) {
-	// 	for(int j = scr.x_min(); j < scr.x_max(); ++j) {
-	// 		Complex c((double)j, (double)i);
-	// 		c = CSHelper::scale(scr, fract, c);
-	// 		colors[k] = escape(c, iter_max, func, th);
-	// 		k++;
-	// 	}
-	// 	if(progress < (int)(i*100.0/scr.y_max())){
-	// 		progress = (int)(i*100.0/scr.y_max());
-	// 		// std::cout << progress << '%' << std::flush;
-	// 		// std::cout.flush();
-	// 	}
-	// }
 }
 
 cv::Mat Fract::computeFractal(
@@ -155,12 +142,59 @@ CS<double> Fract::mandelbrot(
 		auto viewer = Viewer(lastOut);
 		if(show && ! lastOut.empty())
 		{
+			int pressedKey = 0;
 			while(!zoomDone)
 			{
 				string window_name = "FRACT";
 				auto viewer2draw = viewer.drawWithCursor();
-				cv::imshow(window_name, viewer2draw);
-				auto pressedKey = cv::waitKey(0);
+				cv::Mat view2show;
+				cv::resize(viewer2draw, view2show, {1000,1000});
+				string max_iter_info = cv::format(
+					"MAX_IT::%d", 
+					max_iter
+				);
+				string solve_space_size = cv::format(
+					"SOLVE_SPACE_SIZE::{%d : %d}", 
+					outimg_w, 
+					outimg_h
+				);
+				string pressed_info = cv::format(
+					"LAST_PRESSED_KEY::%d", pressedKey 
+				);
+				string fract_pose_info = cv::format(
+					"POSE_IN_FRACT:: {%.6f, %.6f, %.6f, %.6f}", 
+					curx1, 
+					cury1, 
+					curx2, 
+					cury2 
+				);
+				std::vector<string> infs {
+						pressed_info,
+						max_iter_info,
+						fract_pose_info,
+						solve_space_size
+				};
+				cv::Mat img2black = view2show({
+					0,
+					0,
+					int(view2show.cols*2/3),
+					int(20*(infs.size()+1))
+				});
+				img2black.setTo(cv::Scalar(0,0,0));
+				FRACTAL::putTexts(
+					view2show,
+					infs,
+					{
+						10,
+						20
+					},
+					20,
+					0,
+					{255,0,255},
+					1.0
+				);
+				cv::imshow(window_name, view2show);
+				pressedKey = cv::waitKey(0);
 				std::vector<Viewer::KeyboardKeys> commands;
 				if(!Viewer::waitKey2Control(pressedKey, commands))
 					zoomDone = true;

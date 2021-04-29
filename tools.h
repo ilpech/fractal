@@ -2,11 +2,24 @@
 #pragma once
 #ifndef FRACTTOOLS_H
 #define FRACTTOOLS_H
-
 #include <string>
 #include <vector>
+
+
+#include <opencv2/core.hpp>
 namespace FRACTAL
 {
+cv::Point putTexts(
+      cv::Mat& out,
+      const std::vector<std::string> texts,
+      const cv::Point& org,
+      const int verticalStep,
+      const int horizontalStep,
+      const cv::Scalar& clr,
+      const double scale
+      );
+template <typename T>
+void addIfNotExist(std::vector<T>& vec, const T& el);
 std::string moduleDirPath();                         //!< Возвращает путь к исполняемому модулю (в конце - '/')
 bool isPathRelative(const std::string &path);        //!< Возвращает @c true в случае относительно пути
 std::string absolutePath(const std::string &path);   //!< Возвращает абсолютный путь для относительного

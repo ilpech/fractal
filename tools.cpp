@@ -7,6 +7,10 @@
 
 #include "tools.h"
 
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core.hpp>
+
 #ifdef _MSC_VER
 #  ifndef NOMINMAX
 #     define NOMINMAX
@@ -25,6 +29,43 @@
 #include <cstdlib>
 #include <unistd.h>
 #endif
+
+cv::Point FRACTAL::putTexts(
+      cv::Mat& out,
+      const std::vector<std::string> texts,
+      const cv::Point& org,
+      const int verticalStep,
+      const int horizontalStep,
+      const cv::Scalar& clr,
+      const double scale
+      )
+  {
+    auto n_org = org;
+    for(const auto& text: texts)
+    {
+      if(n_org.x > out.size().width ||
+         n_org.y > out.size().height)
+        break;
+      cv::putText(
+            out,
+            text,
+            n_org,
+            cv::FONT_HERSHEY_PLAIN,
+            scale,
+            clr,
+            2
+            );
+      n_org += cv::Point(horizontalStep, verticalStep);
+    }
+    return n_org;
+  }
+
+template <typename T>
+void FRACTAL::addIfNotExist(std::vector<T>& vec, const T& el)
+{
+  if(std::find(vec.begin(), vec.end(), el) == vec.end())
+    vec.push_back(el);
+}
 
 std::string FRACTAL::currentDateTime() 
 {
