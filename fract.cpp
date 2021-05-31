@@ -44,7 +44,6 @@ int FRACTAL::Fract::escape(
 {
 	Fract::Complex z(0);
 	int iter = 0;
-
 	while (abs(z) < th && iter < iter_max) {
 		z = func(z, c);
 		iter++;
@@ -294,9 +293,9 @@ std::tuple<int, int, int> iters2rgbBernsteinPoly(
 {
 	// map n on the 0..1 interval
 	double t = (double)n/(double)iter_max;
-	int r = (int)(4*(1-t)*t*255);
+	int r = (int)(42*(1-t)*t*255);
 	int g = (int)(15*(1-t)*(1-t)*t*t*255);
-	int b =  (int)(8.5*(1-t)*(1-t)*(1-t)*t*255);	
+	int b =  (int)(2.5*(1-t)*(1-t)*(1-t)*t*255);	
 	return std::tuple<int, int, int>(r, g, b);
 	
 }
