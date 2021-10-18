@@ -53,7 +53,7 @@ int FRACTAL::Fract::escape(
 
 
 void Fract::getNumberIterations(
-	CS<int> &scr, 
+	CS<int> &src, 
 	CS<double> &fract, 
 	int iter_max, 
 	std::vector<int> &colors,
@@ -64,23 +64,23 @@ void Fract::getNumberIterations(
 {
 	cout << "process " << iter_max << " iters" << endl;
 	int k = 0, progress = -1;
-	cv::Mat iterMat(scr.width(), scr.height(), CV_8SC1);
+	cv::Mat iterMat(src.width(), src.height(), CV_8SC1);
 	iterMat.forEach<uchar>
 	(
-		[&scr, &fract, &colors, &func, &iter_max](uchar &pixel, const int * position) -> void
+		[&src, &fract, &colors, &func, &iter_max](uchar &pixel, const int * position) -> void
 		{
 			const double th = 2.0;
 			auto y = position[0];
 			auto x = position[1];
 			Complex c((double)x, (double)y);
-			c = CSHelper::scale(scr, fract, c);
-			colors[y*scr.width() + x] = escape(c, iter_max, func, th);
+			c = CSHelper::scale(src, fract, c);
+			colors[y*src.width() + x] = escape(c, iter_max, func, th);
 		}
 	);
 }
 
 cv::Mat Fract::computeFractal(
-  CS<int> &scr, 
+  CS<int> &src, 
   CS<double> &fract, 
   int iter_max, 
   std::vector<int> &colors,
@@ -93,13 +93,13 @@ cv::Mat Fract::computeFractal(
 {
 	cout << "computeFractal..." << endl;
 	auto start = std::chrono::steady_clock::now();
-	getNumberIterations(scr, fract, iter_max, colors, func);
+	getNumberIterations(src, fract, iter_max, colors, func);
 	auto end = std::chrono::steady_clock::now();
 	std::cout << "time to generate "
 			  << fname << " = " 
 			  << std::chrono::duration <double, std::milli> (end - start).count() 
 			  << " [ms]" << std::endl;
-	return Fract::plot(scr, colors, iter_max, fname, smooth_color, show, write);
+	return Fract::plot(src, colors, iter_max, fname, smooth_color, show, write);
 }
 
 CS<double> Fract::mandelbrot(
@@ -112,7 +112,7 @@ CS<double> Fract::mandelbrot(
 	const bool write
 )
 {
-	CS<int> scr(0, outimg_w, 0, outimg_h);
+	CS<int> src(0, outimg_w, 0, outimg_h);
 	CS<double> fract(x1y1.x, x2y2.x, x1y1.y, x2y2.y);
 	//! @attention the function used to calculate the fractal
 	// auto func = [] (Complex z, Complex c) -> Complex {return Complex(cos(45),cos(30))* z * z  + c; };
@@ -126,7 +126,7 @@ CS<double> Fract::mandelbrot(
 		string fname = cv::format(fname_pr.c_str(), i);
 		auto f_path = join(this->outDir, fname);
 		bool smooth_color = true;
-		std::vector<int> colors(scr.size());
+		std::vector<int> colors(src.size());
 		cv::Rect targetBbox;
 		bool zoomDone(false);
 		cout << "zoom until press Esc..." << endl;
@@ -138,7 +138,7 @@ CS<double> Fract::mandelbrot(
 			   newx2(fract.x_max()),
 			   newy1(fract.y_min()),
 			   newy2(fract.y_max());
-		auto viewer = Viewer(lastOut);
+		auto viewer = Viewer(lastOut, max_iter);
 		if(show && ! lastOut.empty())
 		{
 			int pressedKey = 0;
@@ -205,8 +205,8 @@ CS<double> Fract::mandelbrot(
 					newy1,
 					newy2
 				);
-				auto new_pt1 = CSHelper::scale<int, double>(scr, fract, {newx1, newy1});
-				auto new_pt2 = CSHelper::scale<int, double>(scr, fract, {newx2, newy2});
+				auto new_pt1 = CSHelper::scale<int, double>(src, fract, {newx1, newy1});
+				auto new_pt2 = CSHelper::scale<int, double>(src, fract, {newx2, newy2});
 				newx1 = new_pt1.first;
 				newx2 = new_pt2.first;
 				newy1 = new_pt1.second;
@@ -230,8 +230,8 @@ CS<double> Fract::mandelbrot(
 
 		if(targetBbox.area()>0)
 		{
-			auto new_pt1 = CSHelper::scale<int, double>(scr, fract, {targetBbox.x, targetBbox.y});
-			auto new_pt2 = CSHelper::scale<int, double>(scr, fract, {
+			auto new_pt1 = CSHelper::scale<int, double>(src, fract, {targetBbox.x, targetBbox.y});
+			auto new_pt2 = CSHelper::scale<int, double>(src, fract, {
 				targetBbox.x + targetBbox.width, 
 				targetBbox.y + targetBbox.height
 			});
@@ -246,7 +246,8 @@ CS<double> Fract::mandelbrot(
 			newx1, 
 			newx2, 
 			newy1, 
-			newy2);
+			newy2
+		);
 		cout << "HISTORY" << endl;
 		std::vector<std::string> str_history;
 		ofstream f(hist_path);
@@ -260,7 +261,17 @@ CS<double> Fract::mandelbrot(
 		f.close();
 		cout << fract.info() << endl;
 			cout << "ti che" << endl;
-		lastOut = computeFractal(scr, fract, max_iter, colors, func, f_path.c_str(), smooth_color, show, write);
+		lastOut = computeFractal(
+			src, 
+			fract, 
+			max_iter, 
+			colors, 
+			func, 
+			f_path.c_str(), 
+			smooth_color, 
+			show, 
+			write
+		);
 		if(!lastOut.empty())
 			cout << "done" << endl;
 	}
@@ -294,8 +305,11 @@ std::tuple<int, int, int> iters2rgbBernsteinPoly(
 	// map n on the 0..1 interval
 	double t = (double)n/(double)iter_max;
 	int r = (int)(42*(1-t)*t*255);
-	int g = (int)(15*(1-t)*(1-t)*t*t*255);
-	int b =  (int)(2.5*(1-t)*(1-t)*(1-t)*t*255);	
+	int g = (int)(11*(1-t)*(1-t)*3*t*t*255);
+	int b =  (int)(22.5*(1-t)*(1-t)*(1-t)*t*255);	
+	// int r = (int)(42*(1-t)*t*255);
+	// int g = (int)(15*(1-t)*(1-t)*t*t*255);
+	// int b =  (int)(2.5*(1-t)*(1-t)*(1-t)*t*255);	
 	return std::tuple<int, int, int>(r, g, b);
 	
 }
@@ -318,7 +332,7 @@ std::tuple<int, int, int> Fract::iters2rgbBernstein(
 
 
 cv::Mat Fract::plot(
-	CS<int> &scr, 
+	CS<int> &src, 
 	std::vector<int> &colors, 
 	int iter_max, 
 	const char *fname, 
@@ -327,12 +341,12 @@ cv::Mat Fract::plot(
 	const bool write
 ) 
 {
-	unsigned int width = scr.width(), height = scr.height();
+	unsigned int width = src.width(), height = src.height();
 	cv::Mat bitmap(width, height, CV_8UC3);
 	int k = 0;
 	std::tuple<int, int, int> rgb;
-	for(int i = scr.y_min(); i < scr.y_max(); ++i) {
-		for(int j = scr.x_min(); j < scr.x_max(); ++j) {
+	for(int i = src.y_min(); i < src.y_max(); ++i) {
+		for(int j = src.x_min(); j < src.x_max(); ++j) {
 			int n = colors[k];
 			if( !smooth_color ) {
 				rgb = get_rgb_piecewise_linear(n, iter_max);
@@ -426,28 +440,28 @@ std::string FRACTAL::CS<T>::info() const
 
 
 std::complex<double>  FRACTAL::CSHelper::scale(
-	CS<int> &scr, 
+	CS<int> &src, 
 	CS<double> &fr, 
 	std::complex<double> c
 ) 
 {
 	std::complex<double> aux(
-		c.real() / (double)scr.width() * fr.width() + fr.x_min(),
-		c.imag() / (double)scr.height() * fr.height() + fr.y_min()
+		c.real() / (double)src.width() * fr.width() + fr.x_min(),
+		c.imag() / (double)src.height() * fr.height() + fr.y_min()
 	);
 	return aux;
 }
 
 template <typename FROM, typename TO>
 std::pair<TO, TO> FRACTAL::CSHelper::scale(
-	CS<FROM> &scr, 
+	CS<FROM> &src, 
 	CS<TO> &fr, 
 	std::pair<FROM, FROM> c
 ) 
 {
 	return std::make_pair<TO, TO>(
-		c.first / (TO)scr.width() * fr.width() + fr.x_min(),
-		c.second / (TO)scr.height() * fr.height() + fr.y_min()
+		c.first / (TO)src.width() * fr.width() + fr.x_min(),
+		c.second / (TO)src.height() * fr.height() + fr.y_min()
 	);
 }
 
@@ -477,6 +491,12 @@ bool FRACTAL::Viewer::waitKey2Control(
 
 	}
 	else if(k == 120) // x
+	{
+	}
+	else if(k == 97) // a
+	{
+	}
+	else if(k == 115) // s
 	{
 	}
 	else if(k == 27) // Esc
@@ -572,6 +592,17 @@ void FRACTAL::Viewer::moveByKey(const std::vector<Viewer::KeyboardKeys>& keys)
 		cout << "Viewer::KeyboardKeys::ZUM_OUT" << endl;
 		this->xMod -= 1;
 		this->yMod -= 1;
+	}
+	else if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ITERS_ADD) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ITERS_ADD" << endl;
+		this->maxIter += 100;
+	}
+	else if(std::find(keys.begin(), keys.end(), Viewer::KeyboardKeys::ITERS_REMOVE) != keys.end())
+	{
+		cout << "Viewer::KeyboardKeys::ITERS_REMOVE" << endl;
+		if(this->maxIter > 100)
+			this->maxIter -= 100;
 	}
 }
 

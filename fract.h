@@ -142,6 +142,17 @@ public:
 
 struct Viewer
 {
+    Viewer(
+        const cv::Mat& src2view_,
+        const int maxIter_)
+    : src2view(src2view_)
+    , maxIter(maxIter_)
+    {
+        this->xCurrent = int(src2view.size().width/2);
+        this->yCurrent = int(src2view.size().height/2);
+        this->xStep = int(src2view.size().width/100);
+        this->yStep = int(src2view.size().height/100);
+    }
     cv::Mat src2view;
     int xCurrent;
     int yCurrent;
@@ -149,14 +160,7 @@ struct Viewer
     int yStep;
     int xMod = 10;
     int yMod = 10;
-    Viewer(const cv::Mat& src2view_)
-    : src2view(src2view_)
-    {
-        this->xCurrent = int(src2view.size().width/2);
-        this->yCurrent = int(src2view.size().height/2);
-        this->xStep = int(src2view.size().width/100);
-        this->yStep = int(src2view.size().height/100);
-    }
+    int maxIter;
     enum KeyboardKeys
     {
 #ifdef __linux__
@@ -167,8 +171,8 @@ struct Viewer
         ARROW_DOWN = 65364,
         ZUM_IN = 122, //z
         ZUM_OUT = 120, //x
-        ITERS_ADD = 43, // +
-        ITERS_REMOVE = 95 // -
+        ITERS_ADD = 97, // +
+        ITERS_REMOVE = 115 // -
 #else
         NO_KEY = -1,
         ARROW_UP = 0,
@@ -177,8 +181,8 @@ struct Viewer
         ARROW_DOWN = 1,
         ZUM_IN = 122, //z
         ZUM_OUT = 120, //x
-        ITERS_ADD = 43, // +
-        ITERS_REMOVE = 95 // -
+        ITERS_ADD = 97, // +
+        ITERS_REMOVE = 115 // -
 #endif
     };
     static bool waitKey2Control(
